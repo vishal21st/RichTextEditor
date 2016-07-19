@@ -12,8 +12,10 @@ A simple Angular textEditor directive with support for emojis
 
 ## Steps to use this directive:
 1. include textEditor.js after including angular script in your app
-`angular.module('app',['textEditor','ngSanitize']);`
+  `<script scr="textEditor.js"></script>`
 2. add 'textEditor','ngSanitize' as Dependencies in your angular app
+  `angular.module('app',['textEditor','ngSanitize']);`
+3. add your model value to editor-value attribute in directive
 `<div text-editor editor-value="editorValue"></div>`
 
 ## You can add your custom emojis and key binding by adding extra attribute "emoji-codes" to directive  `<div text-editor editor-value="editorValue" emoji-codes="codes"></div>`:
