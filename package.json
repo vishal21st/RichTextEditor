@@ -1,0 +1,11 @@
+{
+  "name": "richt-text-editor",
+  "version": "1.0.0",
+  "description": "a simple edtor with emoji support",
+  "main": "index.html",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "vishal singhal",
+  "license": "ISC"
+}
