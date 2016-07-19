@@ -18,7 +18,9 @@ A simple Angular textEditor directive with support for emojis
 3. add your model value to editor-value attribute in directive
 `<div text-editor editor-value="editorValue"></div>`
 
-## You can add your custom emojis and key binding by adding extra attribute "emoji-codes" to directive  `<div text-editor editor-value="editorValue" emoji-codes="codes"></div>`:
+## You can add your custom emojis and key binding by adding extra attribute "emoji-codes" to directive  
+
+`<div text-editor editor-value="editorValue" emoji-codes="codes"></div>`:
 
 add key value pairs
 `var codes =  {
