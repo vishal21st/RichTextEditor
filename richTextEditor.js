@@ -6,7 +6,8 @@
     return {
       scope: {
         editorValue: "=",
-        emojiCodes: "="
+        emojiCodes: "=",
+        onEnter: "&"
       },
       template: "<p id='editorInput' class='richEditor' contenteditable='true'></p>",
       link: function(scope, el, attrs) {
@@ -18,10 +19,7 @@
         }
 
         editor.bind('keyup', function(event) {
-          var keyCode = event.keyCode;
-          if(!keyCodes[keyCode]) {
-            updateEl(editor.html());
-          }
+          _debouncedHandleKeyPress(event, editor, scope);
         });
 
         scope.$watch('editorValue', function(newVal, oldVal) {
@@ -31,18 +29,33 @@
         })
 
         updateEl = function(str) {
+          var editorEl = document.getElementById(editorId);
+          var selection = saveSelection(editorEl);
+          console.log(selection);
           $timeout(function () {
             scope.editorValue = str;
             var result = angular.element(document.getElementById('result'));
             var newText = parseText(str);
             editor.html(newText);
-            placeCaretAtEnd(editorId);
+            restoreSelection(editorEl, selection);
+
           },0);
         }
       }
     }
   }])
 
+  var _debouncedHandleKeyPress = debounce(function(event, editor, scope) {
+    var keyCode = event.keyCode;
+    if(!keyCodes[keyCode]) {
+      updateEl(editor.html());
+    }
+
+    if(keyCode == 13 && scope.onEnter) {
+      updateEl(editor.html());
+      scope.onEnter();
+    }
+  }, 100);
 
   var emojiCodes =  {
     ':)': { pattern: ":\\)",
@@ -61,7 +74,8 @@
     38: 'arrowRight',
     40: 'arrowDown',
     39: 'arrowTop',
-    32 : 'space'
+    32 : 'space',
+    13 : 'enter'
   }
 
   function updateEmojiCodes(codes) {
@@ -79,23 +93,89 @@
     return _str;
   }
 
-  function placeCaretAtEnd(elementId) {
-    var el = document.getElementById(elementId);
-    el.focus();
-    if (typeof window.getSelection != "undefined"
-            && typeof document.createRange != "undefined") {
-        var range = document.createRange();
-        range.selectNodeContents(el);
-        range.collapse(false);
-        var sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(range);
-    } else if (typeof document.body.createTextRange != "undefined") {
-        var textRange = document.body.createTextRange();
-        textRange.moveToElementText(el);
-        textRange.collapse(false);
-        textRange.select();
-    }
+  var saveSelection, restoreSelection;
+
+  if (window.getSelection && document.createRange) {
+
+      saveSelection = function(containerEl) {
+          var range = window.getSelection().getRangeAt(0);
+          var preSelectionRange = range.cloneRange();
+          preSelectionRange.selectNodeContents(containerEl);
+          preSelectionRange.setEnd(range.startContainer, range.startOffset);
+          var start = preSelectionRange.toString().length;
+          return {
+            start: start,
+            end: start + range.toString().length
+          };
+      };
+
+      restoreSelection = function(containerEl, savedSel) {
+          var charIndex = 0, range = document.createRange();
+          range.setStart(containerEl, 0);
+          range.collapse(true);
+          var nodeStack = [containerEl], node, foundStart = false, stop = false;
+
+          while (!stop && (node = nodeStack.pop())) {
+              if (node.nodeType == 3) {
+                  var nextCharIndex = charIndex + node.length;
+                  if (!foundStart && savedSel.start >= charIndex && savedSel.start <= nextCharIndex) {
+                      range.setStart(node, savedSel.start - charIndex);
+                      foundStart = true;
+                  }
+                  if (foundStart && savedSel.end >= charIndex && savedSel.end <= nextCharIndex) {
+                      range.setEnd(node, savedSel.end - charIndex);
+                      stop = true;
+                  }
+                  charIndex = nextCharIndex;
+              } else {
+                  var i = node.childNodes.length;
+                  while (i--) {
+                      nodeStack.push(node.childNodes[i]);
+                  }
+              }
+          }
+
+          var sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+      }
+  } else if (document.selection) {
+      saveSelection = function(containerEl) {
+          var selectedTextRange = document.selection.createRange();
+          var preSelectionTextRange = document.body.createTextRange();
+          preSelectionTextRange.moveToElementText(containerEl);
+          preSelectionTextRange.setEndPoint("EndToStart", selectedTextRange);
+          var start = preSelectionTextRange.text.length;
+
+          return {
+              start: start,
+              end: start + selectedTextRange.text.length
+          }
+      };
+
+      restoreSelection = function(containerEl, savedSel) {
+          var textRange = document.body.createTextRange();
+          textRange.moveToElementText(containerEl);
+          textRange.collapse(true);
+          textRange.moveEnd("character", savedSel.end);
+          textRange.moveStart("character", savedSel.start);
+          textRange.select();
+      };
   }
+
+  function debounce(func, wait, immediate) {
+  	var timeout;
+  	return function() {
+  		var context = this, args = arguments;
+  		var later = function() {
+  			timeout = null;
+  			if (!immediate) func.apply(context, args);
+  		};
+  		var callNow = immediate && !timeout;
+  		clearTimeout(timeout);
+  		timeout = setTimeout(later, wait);
+  		if (callNow) func.apply(context, args);
+  	};
+  };
 
 })(angular);
